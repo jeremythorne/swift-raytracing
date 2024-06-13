@@ -146,6 +146,7 @@ func / (left: Vec3, right: Float) -> Vec3 {
 struct Ray {
     let a: Vec3
     let b: Vec3
+    let tm: Float
 
     func origin() -> Vec3 {
         return a
@@ -153,6 +154,10 @@ struct Ray {
 
     func direction() -> Vec3 {
         return b
+    }
+
+    func time() -> Float {
+        return tm
     }
 
     func point_at_parameter(t: Float) -> Vec3 {
@@ -180,7 +185,7 @@ struct Lambertian : Material {
 
         return AttenuatedRay(
             attenuation: albedo,
-            ray: Ray(a: rec.p, b: scatter_direction)
+            ray: Ray(a: rec.p, b: scatter_direction, tm: r.time())
         )
     } 
     
@@ -199,7 +204,7 @@ struct Metal : Material {
         } else {
             return AttenuatedRay(
                 attenuation: albedo,
-                ray: Ray(a:rec.p, b:reflected)
+                ray: Ray(a:rec.p, b:reflected, tm: r.time())
             )
         }
     }
@@ -231,7 +236,7 @@ struct Dialectric: Material {
         }
         return AttenuatedRay(
             attenuation: Vec3(x: 1.0, y: 1.0, z: 1.0),
-            ray: Ray(a: rec.p, b: direction)
+            ray: Ray(a: rec.p, b: direction, tm: r.time())
         )
     }
 }
@@ -266,12 +271,31 @@ protocol Hitable {
 }
 
 struct Sphere : Hitable {
-    let centre: Vec3
+    let center1: Vec3
     let radius: Float
     let material: Material
+    let center_vec: Vec3
+    let is_moving: Bool
+
+    init(center: Vec3, radius: Float, material: Material) {
+        self.center1 = center
+        self.radius = radius
+        self.material = material
+        is_moving = false
+        center_vec = Vec3.zero
+    }
+
+    init(center1: Vec3, center2: Vec3, radius: Float, material: Material) {
+        self.center1 = center1
+        self.radius = radius
+        self.material = material
+        is_moving = true
+        center_vec = center2 - center1
+    }
 
     func hit(r: Ray, t_min:Float, t_max:Float) -> HitRecord? {
-        let oc = r.origin() - centre
+        let center = is_moving ? sphere_center(time:r.time()) :  center1
+        let oc = r.origin() - center
         let a = r.direction().dot(r.direction())
         let b = 2.0 * oc.dot(r.direction())
         let c = oc.dot(oc) - self.radius * self.radius
@@ -285,12 +309,16 @@ struct Sphere : Hitable {
                     let p = r.point_at_parameter(t: temp)
                     return HitRecord(
                         t: temp, p: p, r: r,
-                        outward_normal: (p - centre) / radius,
+                        outward_normal: (p - center) / radius,
                         material: material)
                 }
             }
         }
         return nil
+    }
+
+    func sphere_center(time: Float) -> Vec3 {
+        center1 + time * center_vec
     }
 }
 
@@ -348,12 +376,14 @@ struct Camera {
     func get_ray(s:Float, t:Float) -> Ray {
         let rd = random_in_unit_disk() * lens_radius 
         let offset = u * rd.x + v * rd.y
+        let ray_time = Float.random(in: 0.0...1.0)
         return Ray( a: origin + offset,
                     b: lower_left_corner +
                         s * horizontal +
                         t * vertical -
                         origin -
-                        offset)
+                        offset,
+                    tm: ray_time)
     }
 }
 
@@ -399,14 +429,14 @@ func refract(_ uv: Vec3, _ n: Vec3, _ etai_over_etat: Float) -> Vec3 {
 func random_scene() -> HitableList {
     var list = [Hitable]()
     let ground_material = Lambertian(albedo:Vec3(x: 0.5, y: 0.5, z: 0.5))
-    list.append(Sphere(centre:Vec3(x:0, y: -1000, z:0), radius: 1000.0,
+    list.append(Sphere(center:Vec3(x:0, y: -1000, z:0), radius: 1000.0,
             material:ground_material))
     
-    list.append(Sphere(centre:Vec3(x:0, y:1, z:0), radius: 1.0,
+    list.append(Sphere(center:Vec3(x:0, y:1, z:0), radius: 1.0,
             material: Dialectric(ir: 1.5)))
-    list.append(Sphere(centre:Vec3(x:-4, y:1, z:0), radius: 1.0,
+    list.append(Sphere(center:Vec3(x:-4, y:1, z:0), radius: 1.0,
             material: Lambertian(albedo: Vec3(x: 0.4, y: 0.2, z: 0.1))))
-    list.append(Sphere(centre:Vec3(x:4, y:1, z:0), radius: 1.0,
+    list.append(Sphere(center:Vec3(x:4, y:1, z:0), radius: 1.0,
             material: Metal(albedo: Vec3(x: 0.7, y: 0.6, z: 0.5), fuzz: 0.0)))
 
     for a in -11...11 {
@@ -414,9 +444,9 @@ func random_scene() -> HitableList {
             let choose_mat = Float.random(in: 0.0...1.0)
             var r = Vec3.random(in: 0.0...1.0)
             r = Vec3(x: r.x, y: 0.0, z: r.z)
-            let centre = 0.9 * r + Vec3(x: Float(a), y: 0.2, z: Float(b))
+            let center = 0.9 * r + Vec3(x: Float(a), y: 0.2, z: Float(b))
             
-            if (centre - Vec3(x: 4.0, y: 0.2, z: 0.0)).length() > 0.9 {
+            if (center - Vec3(x: 4.0, y: 0.2, z: 0.0)).length() > 0.9 {
                 let material:Material = if choose_mat < 0.8 {
                     Lambertian(albedo:
                             Vec3.random(in: 0.0...1.0) *
@@ -427,7 +457,13 @@ func random_scene() -> HitableList {
                 } else {
                     Dialectric(ir: 1.5)
                 }
-                list.append(Sphere(centre:centre, radius: 0.2, material: material))
+                if choose_mat < 0.8 {
+                    let center2 = center + Vec3(x:0, y:Float.random(in: 0.0...0.5), z:0)
+                    list.append(Sphere(center1:center, center2: center2, 
+                        radius: 0.2, material: material))
+                } else {
+                    list.append(Sphere(center:center, radius: 0.2, material: material))
+                }
              }
         }
     }
