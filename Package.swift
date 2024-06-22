@@ -5,16 +5,18 @@ import PackageDescription
 
 let package = Package(
     name: "raytracing",
-    // dependencies: [
-    //     .package(url: "https://github.com/twostraws/SwiftGD.git", from: "2.0.0")
-    // ],
     targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
+        .target(
+            name: "Lib"
+            ),
         .executableTarget(
             name: "raytracing",
-            // dependencies: ["SwiftGD"],
+            dependencies: [ .target(name: "Lib") ],
             linkerSettings:[.unsafeFlags(["-lm"])]
+        ),
+        .testTarget(
+            name : "Tests",
+            dependencies: [ .target(name: "Lib") ]
         )
     ]
 )

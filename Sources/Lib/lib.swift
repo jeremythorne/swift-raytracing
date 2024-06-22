@@ -39,29 +39,34 @@ struct Image {
     }
 }
 
-struct Vec3 {
-    let x: Float
-    let y: Float
-    let z: Float
+public struct Vec3 : Equatable {
+    public let x: Float
+    public let y: Float
+    public let z: Float
 
-    func dot(_ b: Vec3) -> Float {
+    public init(x: Float, y: Float, z:Float) {
+        self.x = x
+        self.y = y
+        self.z = z}
+
+    public func dot(_ b: Vec3) -> Float {
         return x * b.x + y * b.y + z * b.z
     }
 
-    func length_squared() -> Float {
+    public func length_squared() -> Float {
         return dot(self)
     }
 
-    func length() -> Float {
+    public func length() -> Float {
         return length_squared().squareRoot()
     }
 
-    func normalize() -> Vec3 {
+    public func normalize() -> Vec3 {
         let l = length()
         return Vec3(x:x/l, y: y/l, z: z/l)    
     }
 
-    func cross(_ b: Vec3) -> Vec3 {
+    public func cross(_ b: Vec3) -> Vec3 {
         return Vec3(
             x: y * b.z - z * b.y,
             y: z * b.x - x * b.z,
@@ -69,14 +74,14 @@ struct Vec3 {
         )
     }
 
-    func clamp(vmin: Vec3, vmax: Vec3) -> Vec3 {
+    public func clamp(vmin: Vec3, vmax: Vec3) -> Vec3 {
         return Vec3(
             x: max(vmin.x, min(vmax.x, x)),
             y: max(vmin.y, min(vmax.y, y)),
             z: max(vmin.z, min(vmax.z, z)))
     }
 
-    static func random(in range: ClosedRange<Double>) -> Vec3 {
+    static public func random(in range: ClosedRange<Double>) -> Vec3 {
         let lower = Float(range.lowerBound)
         let upper = Float(range.upperBound)
         let frange = lower...upper
@@ -87,15 +92,21 @@ struct Vec3 {
         )
     }
 
-    static let zero = Vec3(x: 0.0, y: 0.0, z: 0.0)
-    static let one = Vec3(x: 1.0, y: 1.0, z: 1.0)
+    public subscript(index: Int) -> Float {
+        if index == 2 { return z }
+        if index == 1 { return y }
+        return x
+    }
+
+    static public let zero = Vec3(x: 0.0, y: 0.0, z: 0.0)
+    static public let one = Vec3(x: 1.0, y: 1.0, z: 1.0)
 }
 
-prefix func - (a:Vec3) -> Vec3 {
+prefix public func - (a:Vec3) -> Vec3 {
     return Vec3(x:-a.x, y:-a.y, z:-a.z)
 }
 
-func + (left: Vec3, right: Vec3) -> Vec3 {
+public func + (left: Vec3, right: Vec3) -> Vec3 {
     return Vec3(
         x: left.x + right.x,
         y: left.y + right.y,
@@ -103,7 +114,7 @@ func + (left: Vec3, right: Vec3) -> Vec3 {
     )
 }
 
-func * (left: Vec3, right: Vec3) -> Vec3 {
+public func * (left: Vec3, right: Vec3) -> Vec3 {
     return Vec3(
         x: left.x * right.x,
         y: left.y * right.y,
@@ -111,7 +122,7 @@ func * (left: Vec3, right: Vec3) -> Vec3 {
     )
 }
 
-func - (left: Vec3, right: Vec3) -> Vec3 {
+public func - (left: Vec3, right: Vec3) -> Vec3 {
     return Vec3(
         x: left.x - right.x,
         y: left.y - right.y,
@@ -119,7 +130,7 @@ func - (left: Vec3, right: Vec3) -> Vec3 {
     )
 }
 
-func * (left: Float, right: Vec3) -> Vec3 {
+public func * (left: Float, right: Vec3) -> Vec3 {
     return Vec3(
         x: left * right.x,
         y: left * right.y,
@@ -127,7 +138,7 @@ func * (left: Float, right: Vec3) -> Vec3 {
     )
 }
 
-func * (left: Vec3, right: Float) -> Vec3 {
+public func * (left: Vec3, right: Float) -> Vec3 {
     return Vec3(
         x: right * left.x,
         y: right * left.y,
@@ -135,7 +146,7 @@ func * (left: Vec3, right: Float) -> Vec3 {
     )
 }
 
-func / (left: Vec3, right: Float) -> Vec3 {
+public func / (left: Vec3, right: Float) -> Vec3 {
     return Vec3(
         x: left.x / right,
         y: left.y / right,
@@ -143,10 +154,22 @@ func / (left: Vec3, right: Float) -> Vec3 {
     )
 }
 
-struct Ray {
+public struct Ray {
     let a: Vec3
     let b: Vec3
     let tm: Float
+
+    public init(a: Vec3, b: Vec3) {
+        self.a = a
+        self.b = b
+        tm = 0.0
+    }
+
+    init(a: Vec3, b: Vec3, tm: Float) {
+        self.a = a
+        self.b = b
+        self.tm = tm
+    }
 
     func origin() -> Vec3 {
         return a
@@ -165,18 +188,21 @@ struct Ray {
     }
 }
 
-struct AttenuatedRay {
+public struct AttenuatedRay {
     let attenuation: Vec3
     let ray: Ray
 }
 
-protocol Material {
+public protocol Material {
     func scatter(r: Ray, rec: HitRecord) -> AttenuatedRay?   
 }
 
-struct Lambertian : Material {
+public struct Lambertian : Material {
     let albedo:Vec3
-    func scatter(r: Ray, rec: HitRecord) -> AttenuatedRay? {
+    public init(albedo:Vec3) {
+        self.albedo = albedo
+    }
+    public func scatter(r: Ray, rec: HitRecord) -> AttenuatedRay? {
         var scatter_direction = rec.normal + random_unit_vector()
 
         if near_zero(v: scatter_direction) {
@@ -195,7 +221,7 @@ struct Metal : Material {
     let albedo: Vec3
     let fuzz: Float
 
-    func scatter(r: Ray, rec: HitRecord) -> AttenuatedRay? {
+    public func scatter(r: Ray, rec: HitRecord) -> AttenuatedRay? {
         let reflected = reflect(r.direction().normalize(), rec.normal) +
                 fuzz * random_in_unit_sphere()
 
@@ -220,7 +246,7 @@ struct Dialectric: Material {
         return r02 + (1.0 - r0) * pow(1.0 - cosine, 5)
     }
 
-    func scatter(r: Ray, rec: HitRecord) -> AttenuatedRay? {
+    public func scatter(r: Ray, rec: HitRecord) -> AttenuatedRay? {
         let refraction_ratio = if rec.front_face { 1.0/self.ir } else { self.ir }
         let unit_direction = r.direction().normalize()
 
@@ -241,7 +267,7 @@ struct Dialectric: Material {
     }
 }
 
-struct HitRecord {
+public struct HitRecord {
     let t: Float
     let p: Vec3
     let front_face: Bool
@@ -266,23 +292,109 @@ struct HitRecord {
 
 }
 
-protocol Hitable {
-    func hit(r: Ray, t_min:Float, t_max:Float) -> HitRecord?
+public struct Interval : Equatable {
+    public let t_min:Float
+    public let t_max:Float
+
+    public init() {
+        t_min = 0.0
+        t_max = 0.0
+    }
+
+    public init(t_min: Float, t_max:Float) {
+        self.t_min = t_min
+        self.t_max = t_max
+    }
+
+    public init(a:Interval, b:Interval) {
+        // create the interval tightly enclosing the two input intervals
+        t_min = a.t_min <= b.t_min ? a.t_min : b.t_min
+        t_max = a.t_max >= b.t_max ? a.t_max : b.t_max
+    }
+
+    public func expand(delta:Float) -> Interval {
+        let padding = delta/2.0
+        return Interval(t_min:t_min - padding, t_max:t_max + padding)
+    }
+
+    static let empty = Interval(t_min: Float.infinity, t_max: -1.0 * Float.infinity)
 }
 
-struct Sphere : Hitable {
+public protocol Hitable {
+    func hit(r: Ray, ray_t:Interval) -> HitRecord?
+    func bounding_box() -> AABB
+}
+
+
+public struct AABB : Equatable {
+    public let x:Interval
+    public let y:Interval
+    public let z:Interval
+
+    public init() { 
+        x = Interval.empty
+        y = Interval.empty
+        z = Interval.empty
+    }
+
+    public init(a:Vec3, b:Vec3) {
+        x = a.x <= b.x ? Interval(t_min:a.x, t_max:b.x) : Interval(t_min:b.x, t_max:a.x) 
+        y = a.y <= b.y ? Interval(t_min:a.y, t_max:b.y) : Interval(t_min:b.y, t_max:a.y) 
+        z = a.z <= b.z ? Interval(t_min:a.z, t_max:b.z) : Interval(t_min:b.z, t_max:a.z) 
+    }
+
+    public init(box0:AABB, box1:AABB) {
+        x = Interval(a: box0.x, b: box1.x)
+        y = Interval(a: box0.y, b: box1.y)
+        z = Interval(a: box0.z, b: box1.z)
+    }
+
+    func axis_interval(n: Int) -> Interval {
+        if n == 1 { return y }
+        if n == 2 { return z }
+        return x
+    }
+    
+    public func hit(r: Ray, ray_t:Interval) -> Bool {
+        var t = ray_t
+        let ray_orig = r.origin()
+        let ray_dir = r.direction()
+        for axis in 0..<3 {
+            let ax = axis_interval(n:axis)
+            let adinv = 1.0 / ray_dir[axis]
+            let t0 = (ax.t_min - ray_orig[axis]) * adinv
+            let t1 = (ax.t_max - ray_orig[axis]) * adinv
+            if t0 < t1 {
+                if t0 > t.t_min { t = Interval(t_min:t0, t_max:t.t_max) }
+                if t1 < t.t_max { t = Interval(t_min:t.t_min, t_max:t1) }
+            } else {
+                if t1 > t.t_min { t = Interval(t_min:t1, t_max:t.t_max) }
+                if t0 < t.t_max { t = Interval(t_min:t.t_min, t_max:t0) }
+            }
+            if t.t_max <= t.t_min {
+                return false
+            }
+        }
+        return true
+    }
+}
+
+public struct Sphere : Hitable {
     let center1: Vec3
     let radius: Float
     let material: Material
     let center_vec: Vec3
     let is_moving: Bool
+    let bbox: AABB
 
-    init(center: Vec3, radius: Float, material: Material) {
+    public init(center: Vec3, radius: Float, material: Material) {
         self.center1 = center
-        self.radius = radius
+        self.radius = max(0.0, radius)
         self.material = material
         is_moving = false
         center_vec = Vec3.zero
+        let rvec = Vec3(x:radius, y: radius, z:radius)
+        bbox = AABB(a:center1 - rvec, b: center1 + rvec)
     }
 
     init(center1: Vec3, center2: Vec3, radius: Float, material: Material) {
@@ -291,9 +403,13 @@ struct Sphere : Hitable {
         self.material = material
         is_moving = true
         center_vec = center2 - center1
-    }
+        let rvec = Vec3(x:radius, y: radius, z:radius)
+        let box1 = AABB(a:center1 - rvec, b:center1 + rvec)
+        let box2 = AABB(a:center2 - rvec, b:center2 + rvec)
+        bbox = AABB(box0:box1, box1:box2)
+     }
 
-    func hit(r: Ray, t_min:Float, t_max:Float) -> HitRecord? {
+    public func hit(r: Ray, ray_t:Interval) -> HitRecord? {
         let center = is_moving ? sphere_center(time:r.time()) :  center1
         let oc = r.origin() - center
         let a = r.direction().dot(r.direction())
@@ -305,7 +421,7 @@ struct Sphere : Hitable {
                 (-b - discriminant.squareRoot()) / (2.0 * a),
                 (-b + discriminant.squareRoot()) / (2.0 * a)]
             for temp in choices {
-                if temp < t_max && temp > t_min {
+                if temp < ray_t.t_max && temp > ray_t.t_min {
                     let p = r.point_at_parameter(t: temp)
                     return HitRecord(
                         t: temp, p: p, r: r,
@@ -317,24 +433,103 @@ struct Sphere : Hitable {
         return nil
     }
 
+    public func bounding_box() -> AABB {
+        return bbox
+    }
+
     func sphere_center(time: Float) -> Vec3 {
         center1 + time * center_vec
     }
 }
 
-struct HitableList: Hitable {
+public struct HitableList: Hitable {
     var list: [Hitable]
+    var bbox: AABB
 
-    func hit(r: Ray, t_min:Float, t_max:Float) -> HitRecord? {
+    init(list:[Hitable]) {
+        self.list = list
+        self.bbox = AABB()
+        for object in list {
+            bbox = AABB(box0:bbox, box1: object.bounding_box())
+        }
+    }
+
+    public func hit(r: Ray, ray_t:Interval) -> HitRecord? {
         var rec:HitRecord? = nil
-        var closest_so_far = t_max
+        var closest_so_far = ray_t.t_max
         for hitable in list {
-            if let temp_rec = hitable.hit(r:r, t_min:t_min, t_max:closest_so_far) {
+            if let temp_rec = hitable.hit(r:r,
+                        ray_t:Interval(t_min:ray_t.t_min, t_max:closest_so_far)) {
                 closest_so_far = temp_rec.t
                 rec = temp_rec
             }     
         }
         return rec
+    }
+
+    public func bounding_box() -> AABB {
+        return bbox
+    }
+}
+
+func box_compare(a: Hitable, b:Hitable, axis: Int) -> Bool {
+    let a_axis_interval = a.bounding_box().axis_interval(n:axis)
+    let b_axis_interval = b.bounding_box().axis_interval(n:axis)
+    return a_axis_interval.t_min < b_axis_interval.t_min
+}
+
+func make_box_compare(axis:Int) -> (Hitable, Hitable) -> Bool {
+    func compare(a: Hitable, b: Hitable) -> Bool {
+        return box_compare(a:a, b:b, axis:axis)
+    }
+    return compare
+}
+
+// needs to be a class as self referential
+public class BVHNode: Hitable {
+    let left:Hitable
+    let right:Hitable
+    let bbox:AABB
+
+    public convenience init(list:HitableList) {
+        self.init(list:list.list[...])
+    }
+
+    public init(list:ArraySlice<any Hitable>) {
+        let axis = Int.random(in:0...2)
+        let comparator = make_box_compare(axis:axis)
+
+        switch list.count {
+        case 1:
+            print("case 1")
+            left = list[list.startIndex]
+            right = list[list.startIndex]
+        case 2:
+            print("case 2")
+            left = list[list.startIndex]
+            right = list[list.startIndex + 1]
+        default:
+            print("default \(list.count)")
+            let sorted = list.sorted(by: comparator)
+            let mid = sorted.startIndex + sorted.count / 2
+            left = BVHNode(list:sorted[..<mid])
+            right = BVHNode(list:sorted[mid...])
+        }
+        bbox = AABB(box0:left.bounding_box(), box1:right.bounding_box())
+    }
+
+    public func hit(r: Ray, ray_t: Interval) -> HitRecord? {
+        if !bbox.hit(r:r, ray_t:ray_t) {
+            return nil
+        }
+        let hit_left = left.hit(r:r, ray_t: ray_t)
+        let hit_right = right.hit(r:r, ray_t: Interval(t_min:ray_t.t_min, t_max:
+            hit_left?.t ?? ray_t.t_max))
+        return hit_left ?? hit_right
+    }
+
+    public func bounding_box() -> AABB {
+        return bbox
     }
 }
 
@@ -476,7 +671,7 @@ func ray_colour(world: Hitable, r: Ray, depth: Int) -> Vec3 {
         return Vec3.zero
     }
 
-    if let rec = world.hit(r: r, t_min: 0.001, t_max: Float.infinity) {
+    if let rec = world.hit(r: r, ray_t:Interval(t_min: 0.001, t_max: Float.infinity)) {
         if let scattered = rec.material.scatter(r: r, rec: rec) {
             return scattered.attenuation *
                     ray_colour(world: world, r: scattered.ray, depth: depth - 1)
@@ -503,8 +698,8 @@ func write_colour(colour:Vec3, samples_per_pixel:Int) -> (UInt8, UInt8, UInt8) {
     )
 }
 
-func main() {
-    let samples_per_pixel = 100
+public func render() {
+    let samples_per_pixel = 10
     let max_depth = 50
 
     let aspect_ratio = 16.0 / 9.0
@@ -524,6 +719,7 @@ func main() {
         aperture: 0.1,
         focus_dist: 10)
 
+    //let world = BVHNode(list:random_scene())
     let world = random_scene()
     let hit_list = world
 
@@ -550,4 +746,3 @@ func main() {
     img.write(file: "/home/jez/dev/swift-raytracing/out.tga")
 }
 
-main()
