@@ -12,9 +12,9 @@ struct Image {
 
     mutating func set_pixel(x: Int, y: Int, val: (UInt8, UInt8, UInt8)) {
         let index = (x + y * width) * 3
-        data[index] = val.0
+        data[index] = val.2
         data[index + 1] = val.1
-        data[index + 2] = val.2
+        data[index + 2] = val.0
     }
 
     func write(file: String)  {
@@ -621,6 +621,20 @@ func refract(_ uv: Vec3, _ n: Vec3, _ etai_over_etat: Float) -> Vec3 {
     return r_out_perp + r_out_parallel
 }
 
+func debug_mirror_scene() -> HitableList {
+    var list = [Hitable]()
+    list.append(Sphere(center:Vec3(x:0, y:0, z:0), radius: 1.0,
+            material: Metal(albedo: Vec3(x: 1, y: 1, z: 1), fuzz: 0.0)))
+    return HitableList(list:list)
+}
+
+func debug_white_sphere_scene() -> HitableList {
+    var list = [Hitable]()
+    list.append(Sphere(center:Vec3(x:0, y:0, z:0), radius: 1.0,
+            material: Lambertian(albedo: Vec3(x: 1, y: 0, z: 0))))
+    return HitableList(list:list)
+}
+
 func random_scene() -> HitableList {
     var list = [Hitable]()
     let ground_material = Lambertian(albedo:Vec3(x: 0.5, y: 0.5, z: 0.5))
@@ -666,7 +680,20 @@ func random_scene() -> HitableList {
     return HitableList(list:list)
 }
 
-func ray_colour(world: Hitable, r: Ray, depth: Int) -> Vec3 {
+func sky_fade(_ r:Ray) -> Vec3 {
+    let unit_direction = r.direction().normalize()
+    let t = 0.5 * (unit_direction.y + 1.0)
+    return (1.0 - t) * Vec3.one + t * Vec3(x: 0.5, y: 0.7, z: 1.0)
+}
+
+func sky_flat(_ color:Vec3) -> (Ray) -> Vec3 {
+    func sky(_ r:Ray) -> Vec3 {
+        return color
+    }
+    return sky
+}
+
+func ray_colour(world: Hitable, r: Ray, depth: Int, sky: (Ray)->Vec3) -> Vec3 {
     if depth < 0 {
         return Vec3.zero
     }
@@ -674,14 +701,12 @@ func ray_colour(world: Hitable, r: Ray, depth: Int) -> Vec3 {
     if let rec = world.hit(r: r, ray_t:Interval(t_min: 0.001, t_max: Float.infinity)) {
         if let scattered = rec.material.scatter(r: r, rec: rec) {
             return scattered.attenuation *
-                    ray_colour(world: world, r: scattered.ray, depth: depth - 1)
+                    ray_colour(world: world, r: scattered.ray, depth: depth - 1, sky: sky)
         } else {
             return Vec3.zero
         }
     }
-    let unit_direction = r.direction().normalize()
-    let t = 0.5 * (unit_direction.y + 1.0)
-    return (1.0 - t) * Vec3.one + t * Vec3(x: 0.5, y: 0.7, z: 1.0)
+    return sky(r)
 }
 
 func write_colour(colour:Vec3, samples_per_pixel:Int) -> (UInt8, UInt8, UInt8) {
@@ -703,7 +728,7 @@ public func render() {
     let max_depth = 50
 
     let aspect_ratio = 16.0 / 9.0
-    let image_width = 400
+    let image_width = 20
     let image_height = Int(Double(image_width) / aspect_ratio)
 
     var img = Image(width: image_width, height: image_height)
@@ -720,7 +745,11 @@ public func render() {
         focus_dist: 10)
 
     //let world = BVHNode(list:random_scene())
-    let world = random_scene()
+    //let world = random_scene()
+    //let sky = sky_fade
+    let world = debug_white_sphere_scene()
+    let sky = sky_flat(Vec3(x:0.0, y:0.0, z:1.0))
+    // let hit_list = BVHNode(list:world)
     let hit_list = world
 
     let total_pixels = image_width * image_height
@@ -734,7 +763,8 @@ public func render() {
                 let u = (Float(i) + a) / (Float(image_width) - 1.0)
                 let v = 1.0 - (Float(j) + b) / (Float(image_height) - 1.0)
                 let r = camera.get_ray(s: u, t: v)
-                pixel_colour = pixel_colour +  ray_colour(world: hit_list, r: r, depth: max_depth)
+                pixel_colour = pixel_colour + ray_colour(world: hit_list, r: r, depth: max_depth,
+                    sky: sky)
 
             }
             img.set_pixel(x: i, y: j, val: write_colour(colour: pixel_colour, samples_per_pixel: samples_per_pixel))
