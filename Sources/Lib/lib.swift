@@ -268,11 +268,11 @@ struct Dialectric: Material {
 }
 
 public struct HitRecord {
-    let t: Float
-    let p: Vec3
-    let front_face: Bool
-    let normal: Vec3
-    let material: Material
+    public let t: Float
+    public let p: Vec3
+    public let front_face: Bool
+    public let normal: Vec3
+    public let material: Material
 
     init(t: Float, p: Vec3, r: Ray, outward_normal: Vec3,
             material: Material) {
@@ -501,15 +501,12 @@ public class BVHNode: Hitable {
 
         switch list.count {
         case 1:
-            print("case 1")
             left = list[list.startIndex]
             right = list[list.startIndex]
         case 2:
-            print("case 2")
             left = list[list.startIndex]
             right = list[list.startIndex + 1]
         default:
-            print("default \(list.count)")
             let sorted = list.sorted(by: comparator)
             let mid = sorted.startIndex + sorted.count / 2
             left = BVHNode(list:sorted[..<mid])
@@ -525,7 +522,12 @@ public class BVHNode: Hitable {
         let hit_left = left.hit(r:r, ray_t: ray_t)
         let hit_right = right.hit(r:r, ray_t: Interval(t_min:ray_t.t_min, t_max:
             hit_left?.t ?? ray_t.t_max))
-        return hit_left ?? hit_right
+        if hit_right == nil {
+            return hit_left
+        } else if hit_left == nil {
+            return hit_right
+        }
+        return hit_left!.t < hit_right!.t ? hit_left : hit_right
     }
 
     public func bounding_box() -> AABB {
@@ -635,6 +637,28 @@ func debug_white_sphere_scene() -> HitableList {
     return HitableList(list:list)
 }
 
+func debug_simple_sphere_scene() -> HitableList {
+    var list = [Hitable]()
+    let s = 3
+    let o = -6
+    for x in 0..<5 {
+        for y in 0..<5 {
+            for z in 0..<5 {
+                let s = Sphere(center:Vec3(
+                    x: Float(x * s + o), 
+                    y: Float(y * s + o), 
+                    z: Float(z * s + o)), 
+                radius: 1, material: Lambertian(albedo: Vec3(
+                    x: Float(x) / 4,
+                    y: Float(y) / 4, 
+                    z: Float(z) / 4)))
+                list.append(s)
+            }
+        }
+    }
+    return HitableList(list:list)
+}
+
 func random_scene() -> HitableList {
     var list = [Hitable]()
     let ground_material = Lambertian(albedo:Vec3(x: 0.5, y: 0.5, z: 0.5))
@@ -724,16 +748,17 @@ func write_colour(colour:Vec3, samples_per_pixel:Int) -> (UInt8, UInt8, UInt8) {
 }
 
 public func render() {
-    let samples_per_pixel = 10
+    let samples_per_pixel = 50
     let max_depth = 50
 
     let aspect_ratio = 16.0 / 9.0
-    let image_width = 20
+    let image_width = 600
     let image_height = Int(Double(image_width) / aspect_ratio)
 
     var img = Image(width: image_width, height: image_height)
 
     let look_from = Vec3(x: 13, y: 2, z: 3)
+    //let look_from = Vec3(x: 0, y: 0, z: 50)
     let look_at = Vec3(x: 0, y: 0, z: 0)
     let camera = Camera(
         look_from: look_from,
@@ -744,12 +769,13 @@ public func render() {
         aperture: 0.1,
         focus_dist: 10)
 
-    //let world = BVHNode(list:random_scene())
+    let world = BVHNode(list:random_scene())
     //let world = random_scene()
-    //let sky = sky_fade
-    let world = debug_white_sphere_scene()
-    let sky = sky_flat(Vec3(x:0.0, y:0.0, z:1.0))
-    // let hit_list = BVHNode(list:world)
+    let sky = sky_fade
+    //let world = BVHNode(list:debug_simple_sphere_scene())
+    //let world = debug_white_sphere_scene()
+    //let sky = sky_flat(Vec3(x:0.0, y:0.0, z:1.0))
+    //let hit_list = BVHNode(list:world)
     let hit_list = world
 
     let total_pixels = image_width * image_height
@@ -773,6 +799,6 @@ public func render() {
         }
     }
     print("")
-    img.write(file: "/home/jez/dev/swift-raytracing/out.tga")
+    img.write(file: "/Users/jeremythorne/dev/swift-raytracing/out.tga")
 }
 

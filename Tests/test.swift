@@ -96,4 +96,23 @@ class Tests : XCTestCase {
             XCTAssertEqual(h != nil, pattern[i] == 1)
         }         
     }
+
+    func test_bvh_hit_order() {
+        var objs = [Hitable]()
+    
+        // five spheres at z -2, -5, -8, -10, -12
+        for i in 0..<5 {
+            let s = Sphere(center:Vec3(x: 0, y: 0, z: Float(i) * -3 - 2), 
+            radius: 1, material: Lambertian(albedo: Vec3.one))
+            objs.append(s)
+        }
+        let bvh = BVHNode(list: objs[...])
+        let interval = Interval(t_min:0, t_max:1)
+        let r = Ray(a: Vec3(x: 0, y: 0, z: 0), b: Vec3(x: 0, y: 0, z: -10))
+        let h = bvh.hit(r:r, ray_t:interval)!
+        // should hit first sphere at z = -1
+        XCTAssertEqual(h.p, Vec3(x:0, y:0, z:-1))
+        XCTAssertEqual(h.t, 1.0 / 10.0)
+
+    }
 }
