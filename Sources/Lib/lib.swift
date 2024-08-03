@@ -317,6 +317,10 @@ public struct Interval : Equatable {
         return Interval(t_min:t_min - padding, t_max:t_max + padding)
     }
 
+    public func size() -> Float {
+        return t_max - t_min
+    }
+
     static let empty = Interval(t_min: Float.infinity, t_max: -1.0 * Float.infinity)
 }
 
@@ -377,6 +381,15 @@ public struct AABB : Equatable {
         }
         return true
     }
+
+    public func longest_axis() -> Int {
+        if x.size() > y.size() {
+            return x.size() > z.size() ? 0 : 2
+        } else {
+            return y.size() > z.size() ? 1 : 2
+        }
+    }
+    static public let empty = AABB()
 }
 
 public struct Sphere : Hitable {
@@ -496,7 +509,12 @@ public class BVHNode: Hitable {
     }
 
     public init(list:ArraySlice<any Hitable>) {
-        let axis = Int.random(in:0...2)
+        var box = AABB.empty
+        for item in list {
+            box = AABB(box0: box, box1: item.bounding_box())
+        }
+        bbox = box
+        let axis = bbox.longest_axis()
         let comparator = make_box_compare(axis:axis)
 
         switch list.count {
@@ -512,7 +530,6 @@ public class BVHNode: Hitable {
             left = BVHNode(list:sorted[..<mid])
             right = BVHNode(list:sorted[mid...])
         }
-        bbox = AABB(box0:left.bounding_box(), box1:right.bounding_box())
     }
 
     public func hit(r: Ray, ray_t: Interval) -> HitRecord? {
