@@ -37,8 +37,11 @@ func debug_simple_sphere_scene() -> HitableList {
 func random_scene() -> HitableList {
     var list = [Hitable]()
     let ground_material = Lambertian(albedo:Vec3(x: 0.5, y: 0.5, z: 0.5))
+    let checker = Lambertian(tex: CheckerTexture(scale: 0.32, 
+        c1: Vec3(x: 0.2, y: 0.3, z: 0.1), 
+        c2: Vec3(x: 0.9, y: 0.9, z: 0.9)))
     list.append(Sphere(center:Vec3(x:0, y: -1000, z:0), radius: 1000.0,
-            material:ground_material))
+            material:checker))
     
     list.append(Sphere(center:Vec3(x:0, y:1, z:0), radius: 1.0,
             material: Dialectric(ir: 1.5)))
@@ -92,7 +95,7 @@ func sky_flat(_ color:Vec3) -> (Ray) -> Vec3 {
     return sky
 }
 
-public func main() {
+public func bouncing_spheres() {
 
     let config = Config(
         samples_per_pixel:50,
@@ -112,5 +115,40 @@ public func main() {
 
     render(config:config, sky:sky,
         world:world, out_path: "/Users/jeremythorne/dev/swift-raytracing/out.tga")
+}
+
+public func checkered_spheres() {
+    let config = Config(
+        samples_per_pixel:100,
+        max_depth:50, 
+        aspect_ratio: 16.0 / 9.0, 
+        image_width: 400,
+        look_from: Vec3(x: 13, y: 2, z: 3),
+        look_at: Vec3(x: 0, y: 1, z: 0)
+    )
+
+    var list = [Hitable]()
+    let checker = Lambertian(tex: CheckerTexture(scale: 0.32, 
+        c1: Vec3(x: 0.2, y: 0.3, z: 0.1), 
+        c2: Vec3(x: 0.9, y: 0.9, z: 0.9)))
+    list.append(Sphere(center:Vec3(x:0, y: -10, z:0), radius: 10.0,
+            material:checker))
+    list.append(Sphere(center:Vec3(x:0, y: 10, z:0), radius: 10.0,
+            material:checker))
+
+    let world = BVHNode(list:HitableList(list: list))
+    let sky = sky_fade
+
+    render(config:config, sky:sky,
+        world:world, out_path: "/Users/jeremythorne/dev/swift-raytracing/out.tga")
+}    
+
+
+public func main() {
+    switch(2) {
+        case 1: bouncing_spheres(); break;
+        case 2: checkered_spheres();
+        default: checkered_spheres();
+    }
 }
 

@@ -1,3 +1,3 @@
 import Lib
 
-render()
+main()

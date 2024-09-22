@@ -79,8 +79,8 @@ class Tests : XCTestCase {
         var objs = [Hitable]()
         for i in 0..<9 {
             if pattern[i] == 1 {
-                let x = Float(i % 3)
-                let y = Float(i / 3)
+                let x = Double(i % 3)
+                let y = Double(i / 3)
                 let s = Sphere(center:Vec3(x: x, y: y, z: 0.5), 
                     radius: 1, material: Lambertian(albedo: Vec3.one))
                 objs.append(s) 
@@ -89,8 +89,8 @@ class Tests : XCTestCase {
         let bvh = BVHNode(list: objs[...])
         let interval = Interval(t_min:0, t_max:1)
         for i in 0..<9 {
-            let x = Float(i % 3)
-            let y = Float(i / 3)
+            let x = Double(i % 3)
+            let y = Double(i / 3)
             let r = Ray(a: Vec3(x: x, y: y, z: 0), b: Vec3(x: 0, y: 0, z: 2))
             let h = bvh.hit(r:r, ray_t:interval)
             XCTAssertEqual(h != nil, pattern[i] == 1)
@@ -102,7 +102,7 @@ class Tests : XCTestCase {
     
         // five spheres at z -2, -5, -8, -10, -12
         for i in 0..<5 {
-            let s = Sphere(center:Vec3(x: 0, y: 0, z: Float(i) * -3 - 2), 
+            let s = Sphere(center:Vec3(x: 0, y: 0, z: Double(i) * -3 - 2), 
             radius: 1, material: Lambertian(albedo: Vec3.one))
             objs.append(s)
         }

@@ -45,16 +45,19 @@ public struct HitRecord {
     public let front_face: Bool
     public let normal: Vec3
     public let material: Material
-    public let u: Double = 0
-    public let v: Double = 0
+    public let u: Double
+    public let v: Double
 
     init(t: Double, p: Vec3, r: Ray, outward_normal: Vec3,
+            u: Double, v: Double,
             material: Material) {
         let (front_face, normal) = HitRecord.face_normal(r, outward_normal) 
         self.t = t
         self.p = p
         self.front_face = front_face
         self.normal = normal
+        self.u = u
+        self.v = v
         self.material = material
     }
 
@@ -209,9 +212,15 @@ public struct Sphere : Hitable {
             for temp in choices {
                 if temp < ray_t.t_max && temp > ray_t.t_min {
                     let p = r.point_at_parameter(t: temp)
+                    let outward_normal = (p - center) / radius
+                    var u: Double = 0.0
+                    var v: Double = 0.0
+                    get_sphere_uv(p: outward_normal, u: &u, v: &v)
                     return HitRecord(
                         t: temp, p: p, r: r,
-                        outward_normal: (p - center) / radius,
+                        outward_normal: outward_normal,
+                        u: u,
+                        v: v,
                         material: material)
                 }
             }
@@ -225,6 +234,14 @@ public struct Sphere : Hitable {
 
     func sphere_center(time: Double) -> Vec3 {
         center1 + time * center_vec
+    }
+
+    func get_sphere_uv(p: Vec3, u: inout Double, v: inout Double) {
+        let theta = acos(-p.y)
+        let phi = atan2(-p.z, p.x) + Double.pi
+
+        u = phi / (2 * Double.pi)
+        v = theta / Double.pi 
     }
 }
 

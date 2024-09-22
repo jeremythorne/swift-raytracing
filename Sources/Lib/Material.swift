@@ -5,10 +5,15 @@ public protocol Material {
 }
 
 public struct Lambertian : Material {
-    let albedo:Vec3
+    let tex:Texture
     public init(albedo:Vec3) {
-        self.albedo = albedo
+        self.tex = SolidColor(albedo: albedo)
     }
+
+    public init(tex: Texture) {
+        self.tex = tex
+    }
+
     public func scatter(r: Ray, rec: HitRecord) -> AttenuatedRay? {
         var scatter_direction = rec.normal + random_unit_vector()
 
@@ -17,7 +22,7 @@ public struct Lambertian : Material {
         }
 
         return AttenuatedRay(
-            attenuation: albedo,
+            attenuation: tex.value(u: rec.u, v: rec.v, p: rec.p),
             ray: Ray(a: rec.p, b: scatter_direction, tm: r.time())
         )
     } 
